@@ -1,0 +1,65 @@
+<html>
+<head>
+</head>
+<body>
+<script src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/14082/FileSaver.js"></script>
+<script src="https://cdn.rawgit.com/eligrey/Blob.js/079824b6/Blob.js"></script>
+<script>
+//var FileSaver = require('file-saver')
+keyAlgo={name:'RSASSA-PKCS1-v1_5'}
+hashAlgo={name:'SHA-256'}
+function genKey(after){
+  window.crypto.subtle.generateKey(
+   {
+     name:keyAlgo.name,
+     modulusLength:2048,
+     publicExponent:new Uint8Array([0x01,0x00,0x01]),
+     hash:hashAlgo
+   },
+   true,
+    ['sign','verify']
+  ).then(after)
+}
+function exportPubkey(publicKey,after){
+  return window.crypto.subtle.exportKey('spki',publicKey).then(after)
+}
+function exportPrivkey(privateKey,after){
+  return window.crypto.subtle.exportKey('pkcs8',privateKey).then(after)
+}
+function sign(privateKey,data,after){
+  return window.crypto.subtle.sign(keyAlgo,privateKey,data).then(after)
+}
+function verify(publicKey,signature,data,after){
+  return window.crypto.subtle.verify(keyAlgo,publicKey,signature,data).then(after)
+}
+function hash(data,after){
+  window.crypto.subtle.digest(hashAlgo,data).then(after)
+}
+////////////////////////////////////////////////////////////////////////////
+function keyToFile(key,password){ //I HATE ASYNCHRONOUS PROGRAMMING
+  exportPubkey(key.publicKey,function(exp1){
+  exportPrivkey(key.privateKey,function(exp2){
+  console.log(exp1)
+  console.log(exp2)
+
+  var pw2=new ArrayBuffer(password.length*2)
+  var view=new Uint16Array(pw2)
+  for (var i=0;i<password.length;i++) {
+    view[i]=password.charCodeAt(i)
+  }
+  hash(pw2,function(hashed){
+  window.crypto.subtle.importKey('raw',hashed,{name:'AES-CBC'},false,['encrypt']).then(function(encryptionKey){
+  window.crypto.subtle.encrypt({name:'AES-CBC',iv:window.crypto.getRandomValues(new Uint8Array(16))},encryptionKey,exp1).then(function(data1){
+  window.crypto.subtle.encrypt({name:'AES-CBC',iv:window.crypto.getRandomValues(new Uint8Array(16))},encryptionKey,exp2).then(function(data2){
+  var blob = new Blob([data1,data2])
+  saveAs(blob,'testpair.kpair')
+  })})})})})})
+}
+function randomKeyFile(password){
+  genKey(function(key){
+    keyToFile(key,password)
+  })
+}
+randomKeyFile('password')
+</script>
+</body>
