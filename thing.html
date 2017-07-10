@@ -21,6 +21,9 @@ function sign(privateKey,data,after){
 function verify(publicKey,signature,data,after){
   return window.crypto.subtle.verify({name:'RSASSA-PKCS1-v1_5'},publicKey,signature,data).then(after);
 }
+function hash(data,after){
+  window.crypto.subtle.digest({name:'SHA-256'},data).then(after);
+}
 genKey(function(key){
   data=new ArrayBuffer(8);
   sign(key.privateKey,data,function(signature){
@@ -29,5 +32,6 @@ genKey(function(key){
     });
   });
 });
+hash(new ArrayBuffer(8),function(hashed){console.log(new Uint8Array(hashed));});
 </script>
 </body>
